@@ -14,44 +14,47 @@ logins_ativos = set()
 def carregar_usuarios():
     if not os.path.exists(ARQUIVO_USUARIOS):
         return []
-    with open(ARQUIVO_USUARIOS, "r") as f:
+    with open(ARQUIVO_USUARIOS, "r", encoding="utf-8") as f:
         return json.load(f)
 
 def salvar_usuarios(usuarios):
-    with open(ARQUIVO_USUARIOS, "w") as f:
+    with open(ARQUIVO_USUARIOS, "w", encoding="utf-8") as f:
         json.dump(usuarios, f, indent=4)
 
 def cadastrar_usuario(nome, email, login, senha):
+    """
+    Retorna True se o cadastro foi realizado com sucesso,
+    False se o login já existe.
+    """
     usuarios = carregar_usuarios()
     for u in usuarios:
         if u["login"] == login:
-            print(f"❌ Login '{login}' já existe!")
-            return
+            return False
     usuarios.append({"nome": nome, "email": email, "login": login, "senha": senha})
     salvar_usuarios(usuarios)
-    print(f"✅ Usuário '{login}' cadastrado com sucesso!")
+    return True
 
 def login_usuario():
+    """
+    Retorna o usuário (dicionário) se login e senha corretos,
+    None se falhou.
+    Não imprime nada.
+    """
     usuarios = carregar_usuarios()
     login = input("Login: ").strip()
     senha = input("Senha: ").strip()
 
-    # Verifica se já está logado
     if login in logins_ativos:
-        print(f"❌ Usuário '{login}' já está logado!")
-        return None
+        return None  # Já está logado
 
     for u in usuarios:
         if u["login"] == login and u["senha"] == senha:
             logins_ativos.add(login)
-            print(f"✅ Login realizado com sucesso! Bem-vindo(a) {u['nome']}")
-            return u  # <-- Retornando o dicionário completo
+            return u
 
-    print("❌ Login ou senha incorretos!")
-    return None
-
+    return None  # Login ou senha incorretos
 
 def logout_usuario(login):
-    """Remove o usuário da lista de logins ativos"""
+    """Remove o usuário da lista de logins ativos. Não imprime nada."""
     logins_ativos.discard(login)
-    print(f"⚪ Usuário '{login}' deslogado.")
+    return True

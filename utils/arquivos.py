@@ -39,3 +39,9 @@ def exportar_relatorio_txt(caminho: str, linhas: list[str]) -> None:
     with open(caminho, "w", encoding="utf-8") as f:
         for linha in linhas:
             f.write(str(linha).rstrip() + "\n")
+
+def carregar_arquivo_json(caminho: str):
+    return ler_json(caminho)
+
+def salvar_arquivo_json(caminho: str, dados: Any):
+    salvar_json(caminho, dados)

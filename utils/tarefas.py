@@ -1,97 +1,154 @@
-import json
 import os
 from datetime import datetime
+from utils import arquivos
 
-# ---------------- Caminho do arquivo ---------------- #
+# Caminho do arquivo de tarefas
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJETO_DIR = os.path.abspath(os.path.join(BASE_DIR, ".."))
 DATA_DIR = os.path.join(PROJETO_DIR, "data")
-os.makedirs(DATA_DIR, exist_ok=True)
-ARQUIVO_TAREFAS = os.path.join(DATA_DIR, "tarefas.json")
+CAMINHO_TAREFAS = os.path.join(DATA_DIR, "tarefas.json")
 
-# ---------------- Funções auxiliares ---------------- #
+
+# ---------------- Funções de carregamento/salvamento ---------------- #
 def carregar_tarefas():
-    if not os.path.exists(ARQUIVO_TAREFAS):
-        return []
-    with open(ARQUIVO_TAREFAS, "r") as f:
-        return json.load(f)
+    return arquivos.ler_json(CAMINHO_TAREFAS)
+
 
 def salvar_tarefas(tarefas):
-    with open(ARQUIVO_TAREFAS, "w") as f:
-        json.dump(tarefas, f, indent=4)
+    arquivos.salvar_json(CAMINHO_TAREFAS, tarefas)
 
-# ---------------- Funções principais ---------------- #
-def criar_tarefa(titulo, descricao, responsavel, prazo):
+
+# ---------------- Criar tarefa ---------------- #
+def criar_tarefa(usuario_login, usuario_nome):
     tarefas = carregar_tarefas()
-    tarefa_id = len(tarefas) + 1
 
-    # Validação de prazo
+    titulo = input("Título da tarefa: ").strip()
+    descricao = input("Descrição: ").strip()
+    prazo_str = input("Prazo (dd/mm/aaaa): ").strip()
+
+    # Valida se já existe título igual para o mesmo usuário
+    for t in tarefas:
+        if t.get("usuario") == usuario_login and t.get("titulo").lower() == titulo.lower():
+            print("\n❌ Já existe uma tarefa com esse nome para este usuário!")
+            return
+
+    # Valida data
     try:
-        dt = datetime.strptime(prazo, "%d/%m/%Y")
-        if dt < datetime.now():
-            print("❌ Prazo não pode ser anterior a hoje!")
+        prazo = datetime.strptime(prazo_str, "%d/%m/%Y")
+        if prazo < datetime.now():
+            print("\n❌ A data de prazo não pode ser no passado!")
             return
     except ValueError:
-        print("❌ Formato de prazo inválido! Use dd/mm/aaaa")
+        print("\n❌ Data inválida! Use o formato dd/mm/aaaa.")
         return
 
-    # Validação de título duplicado apenas para o mesmo usuário
-    for t in tarefas:
-        if t["titulo"].lower() == titulo.lower() and t["responsavel"] == responsavel:
-            print(f"❌ Você já tem uma tarefa com o título '{titulo}'!")
-            return
+    # Gera ID
+    novo_id = max([t["id"] for t in tarefas], default=0) + 1
 
-    tarefa = {
-        "id": tarefa_id,
+    # Cria tarefa
+    nova_tarefa = {
+        "id": novo_id,
         "titulo": titulo,
         "descricao": descricao,
-        "responsavel": responsavel,
-        "prazo": prazo,
-        "status": "pendente"
+        "prazo": prazo_str,
+        "concluida": False,
+        "usuario": usuario_login,
+        "nome_usuario": usuario_nome,  # <<< aqui
+        "data_criacao": datetime.now().strftime("%d/%m/%Y %H:%M")
     }
-    tarefas.append(tarefa)
+
+    tarefas.append(nova_tarefa)
     salvar_tarefas(tarefas)
-    print(f"✅ Tarefa '{titulo}' criada com sucesso!")
+    print(f"\n✅ Tarefa '{titulo}' criada com sucesso!")
 
-def listar_tarefas(usuario=None):
+    # ---------------- Função de correção para tarefas antigas ---------------- #
+def corrigir_tarefas_antigas():
+    """
+    Adiciona 'usuario' e 'nome_usuario' em tarefas antigas que não têm.
+    Retorna True se houve alteração.
+    """
+    tarefas_list = carregar_tarefas()
+    alterado = False
+    for t in tarefas_list:
+        if "usuario" not in t:
+            t["usuario"] = "desconhecido"
+            alterado = True
+        if "nome_usuario" not in t:
+            # Tenta usar o nome real se existir, senão o login
+            t["nome_usuario"] = t.get("nome_usuario", t.get("usuario", "Desconhecido"))
+            alterado = True
+    if alterado:
+        salvar_tarefas(tarefas_list)
+    return alterado
+
+
+
+# ---------------- Listar tarefas ---------------- #
+def listar_tarefas(usuario_login=None):
     tarefas = carregar_tarefas()
-    if usuario:
-        tarefas = [t for t in tarefas if t["responsavel"] == usuario]
-    if not tarefas:
-        print("⚠️ Nenhuma tarefa encontrada!")
-        return
+    if usuario_login:
+        return [t for t in tarefas if t.get("usuario") == usuario_login]
+    return tarefas
 
-    print("\n=== LISTA DE TAREFAS ===")
-    for t in tarefas:
-        status_cor = "\033[92m" if t['status'] == 'concluída' else "\033[91m"
-        print(f"ID: {t['id']} | Título: {t['titulo']} | Responsável: {t['responsavel']} | "
-              f"Prazo: {t['prazo']} | Status: {status_cor}{t['status']}\033[0m")
 
-def concluir_tarefa(tarefa_id, usuario):
+# ---------------- Verificar se usuário tem tarefas ---------------- #
+def verificar_tarefas(usuario_login):
+    return len(listar_tarefas(usuario_login)) > 0
+
+
+# ---------------- Excluir tarefa ---------------- #
+def excluir_tarefa(id_tarefa, usuario_login):
     tarefas = carregar_tarefas()
-    for t in tarefas:
-        if t["id"] == tarefa_id:
-            if t["responsavel"] != usuario:
-                print("❌ Você não é responsável por esta tarefa!")
-                return
-            if t["status"] == "concluída":
-                print("❌ Tarefa já está concluída!")
-                return
-            t["status"] = "concluída"
-            salvar_tarefas(tarefas)
-            print(f"✅ Tarefa '{t['titulo']}' concluída!")
-            return
-    print("❌ Tarefa não encontrada!")
 
-def excluir_tarefa(tarefa_id, usuario):
-    tarefas = carregar_tarefas()
+    tarefa_encontrada = None
     for t in tarefas:
-        if t["id"] == tarefa_id:
-            if t["responsavel"] != usuario:
-                print("❌ Você não é responsável por esta tarefa!")
-                return
-            tarefas.remove(t)
-            salvar_tarefas(tarefas)
-            print(f"✅ Tarefa '{t['titulo']}' excluída!")
-            return
-    print("❌ Tarefa não encontrada!")
+        if t.get("id") == id_tarefa and t.get("usuario") == usuario_login:
+            tarefa_encontrada = t
+            break
+
+    if not tarefa_encontrada:
+        print(f"❌ Tarefa com ID {id_tarefa} não encontrada para este usuário.")
+        return False
+
+    tarefas.remove(tarefa_encontrada)
+    salvar_tarefas(tarefas)
+    print("✔️ Tarefa excluída com sucesso!")
+    return True
+
+
+# ---------------- Concluir tarefa ---------------- #
+def concluir_tarefa(id_tarefa, usuario_login):
+    tarefas = carregar_tarefas()
+
+    tarefa_encontrada = None
+    for t in tarefas:
+        if t.get("id") == id_tarefa and t.get("usuario") == usuario_login:
+            tarefa_encontrada = t
+            break
+
+    if not tarefa_encontrada:
+        print(f"❌ Nenhuma tarefa encontrada com esse ID para este usuário.")
+        return False
+
+    if tarefa_encontrada.get("concluida"):
+        print(f"⚠️ A tarefa '{tarefa_encontrada['titulo']}' já está concluída.")
+        return False
+
+    tarefa_encontrada["concluida"] = True
+    tarefa_encontrada["concluida_em"] = datetime.now().strftime("%d/%m/%Y %H:%M")
+    salvar_tarefas(tarefas)
+    print(f"✔️ Tarefa '{tarefa_encontrada['titulo']}' concluída com sucesso!")
+    return True
+
+
+# ---------------- Corrigir tarefas antigas ---------------- #
+def corrigir_tarefas_antigas():
+    tarefas_list = carregar_tarefas()
+    alterado = False
+    for t in tarefas_list:
+        if "usuario" not in t:
+            t["usuario"] = "desconhecido"
+            alterado = True
+    if alterado:
+        salvar_tarefas(tarefas_list)
+    return alterado
