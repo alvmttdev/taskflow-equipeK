@@ -1,16 +1,14 @@
-import json
 import os
+import json
 from datetime import datetime
 
-# ---------------- Cores e estilos ---------------- #
+# ---------------- Cores ---------------- #
 RED = "\033[91m"
 GREEN = "\033[92m"
 YELLOW = "\033[93m"
-BLUE = "\033[94m"
-MAGENTA = "\033[95m"
 CYAN = "\033[96m"
-RESET = "\033[0m"
 BOLD = "\033[1m"
+RESET = "\033[0m"
 
 # ---------------- Caminho do arquivo ---------------- #
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -22,46 +20,55 @@ ARQUIVO_TAREFAS = os.path.join(DATA_DIR, "tarefas.json")
 def carregar_tarefas():
     if not os.path.exists(ARQUIVO_TAREFAS):
         return []
-    with open(ARQUIVO_TAREFAS, "r") as f:
+    with open(ARQUIVO_TAREFAS, "r", encoding="utf-8") as f:
         return json.load(f)
 
-# ---------------- Relatórios ---------------- #
-def gerar_relatorio(usuario=None):
+# ---------------- Relatório ---------------- #
+def gerar_relatorio(usuario_login=None):
     tarefas = carregar_tarefas()
-    if usuario:
-        tarefas = [t for t in tarefas if t["responsavel"] == usuario]
+
+    # Filtra tarefas do usuário, se informado
+    if usuario_login:
+        tarefas = [t for t in tarefas if t.get("usuario") == usuario_login]
 
     if not tarefas:
         print(f"{YELLOW}⚠️ Nenhuma tarefa encontrada para gerar relatório.{RESET}")
         return
 
-    pendentes = [t for t in tarefas if t["status"] == "pendente"]
-    concluidas = [t for t in tarefas if t["status"] == "concluída"]
-    atrasadas = [t for t in pendentes if datetime.strptime(t["prazo"], "%d/%m/%Y") < datetime.now()]
+    pendentes = [t for t in tarefas if not t.get("concluida", False)]
+    concluidas = [t for t in tarefas if t.get("concluida", False)]
+    atrasadas = [
+        t for t in pendentes
+        if t.get("prazo") and datetime.strptime(t["prazo"], "%d/%m/%Y") < datetime.now()
+    ]
 
     print(f"\n{BOLD}{CYAN}=== RELATÓRIO DE TAREFAS ==={RESET}")
-    print(f"{BOLD}Usuário:{RESET} {usuario}\n")
+    if usuario_login:
+        print(f"{BOLD}Usuário:{RESET} {usuario_login}\n")
 
     print(f"{GREEN}✅ Concluídas ({len(concluidas)}):{RESET}")
     if concluidas:
         for t in concluidas:
-            print(f"  {t['titulo']} - Prazo: {t['prazo']}")
+            nome = t.get("nome_usuario", "Desconhecido")
+            print(f"  {t['titulo']} - Prazo: {t['prazo']} | Criado por: {nome}")
     else:
         print("  Nenhuma tarefa concluída.")
 
     print(f"\n{RED}❌ Pendentes ({len(pendentes)}):{RESET}")
     if pendentes:
         for t in pendentes:
+            nome = t.get("nome_usuario", "Desconhecido")
             status_emoji = "⏰" if datetime.strptime(t["prazo"], "%d/%m/%Y") < datetime.now() else "📝"
-            print(f"  {t['titulo']} - Prazo: {t['prazo']} {status_emoji}")
+            print(f"  {t['titulo']} - Prazo: {t['prazo']} | Criado por: {nome} {status_emoji}")
     else:
         print("  Nenhuma tarefa pendente.")
 
     print(f"\n{YELLOW}⚠️ Atrasadas ({len(atrasadas)}):{RESET}")
     if atrasadas:
         for t in atrasadas:
-            print(f"  {t['titulo']} - Prazo: {t['prazo']}")
+            nome = t.get("nome_usuario", "Desconhecido")
+            print(f"  {t['titulo']} - Prazo: {t['prazo']} | Criado por: {nome}")
     else:
         print("  Nenhuma tarefa atrasada.")
 
-    print(f"\n{MAGENTA}============================{RESET}\n")
+    print(f"\n{CYAN}{BOLD}============================{RESET}\n")
