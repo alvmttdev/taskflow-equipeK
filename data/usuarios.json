@@ -1,12 +1,14 @@
-{
-    "admin": {
+[
+    {
         "nome": "Alvaro Mattos",
-        "email": "alvaro.mattos",
+        "email": "alvaro.mattos@ba.estudante.senai.br",
+        "login": "admin",
         "senha": "admin123"
     },
-    "admin2": {
+    {
         "nome": "Carlos Oliveira",
-        "email": "carlosoliveira",
-        "senha": "admin1234"
+        "email": "carlos.oliveira@ba.estudante.senai.br",
+        "login": "admin2",
+        "senha": "admin123"
     }
-}
+]

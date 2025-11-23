@@ -1,63 +1,67 @@
-import os
 import json
+import os
 from datetime import datetime
 
-# Caminho absoluto para data/tarefas.json
+# ---------------- Cores e estilos ---------------- #
+RED = "\033[91m"
+GREEN = "\033[92m"
+YELLOW = "\033[93m"
+BLUE = "\033[94m"
+MAGENTA = "\033[95m"
+CYAN = "\033[96m"
+RESET = "\033[0m"
+BOLD = "\033[1m"
+
+# ---------------- Caminho do arquivo ---------------- #
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJETO_DIR = os.path.abspath(os.path.join(BASE_DIR, ".."))
 DATA_DIR = os.path.join(PROJETO_DIR, "data")
 ARQUIVO_TAREFAS = os.path.join(DATA_DIR, "tarefas.json")
 
-# garante que a pasta data exista
-os.makedirs(DATA_DIR, exist_ok=True)
-
+# ---------------- Funções auxiliares ---------------- #
 def carregar_tarefas():
-    """Carrega tarefas do arquivo JSON"""
     if not os.path.exists(ARQUIVO_TAREFAS):
         return []
     with open(ARQUIVO_TAREFAS, "r") as f:
         return json.load(f)
 
+# ---------------- Relatórios ---------------- #
 def gerar_relatorio(usuario=None):
-    """
-    Gera relatório de tarefas.
-    Se 'usuario' for fornecido, filtra apenas tarefas do usuário.
-    """
     tarefas = carregar_tarefas()
-
     if usuario:
         tarefas = [t for t in tarefas if t["responsavel"] == usuario]
 
     if not tarefas:
-        print("Nenhuma tarefa para gerar relatório.")
+        print(f"{YELLOW}⚠️ Nenhuma tarefa encontrada para gerar relatório.{RESET}")
         return
 
-
-    # separa tarefas
-    concluídas = [t for t in tarefas if t["status"] == "concluída"]
     pendentes = [t for t in tarefas if t["status"] == "pendente"]
-    atrasadas = []
+    concluidas = [t for t in tarefas if t["status"] == "concluída"]
+    atrasadas = [t for t in pendentes if datetime.strptime(t["prazo"], "%d/%m/%Y") < datetime.now()]
 
-    hoje = datetime.today()
-    for t in pendentes:
-        prazo = datetime.strptime(t["prazo"], "%d/%m/%Y")
-        if prazo < hoje:
-            atrasadas.append(t)
+    print(f"\n{BOLD}{CYAN}=== RELATÓRIO DE TAREFAS ==={RESET}")
+    print(f"{BOLD}Usuário:{RESET} {usuario}\n")
 
-    print("\n=== RELATÓRIO DE TAREFAS ===")
-    print(f"Total de tarefas: {len(tarefas)}")
-    print(f"Tarefas concluídas: {len(concluídas)}")
-    print(f"Tarefas pendentes: {len(pendentes)}")
-    print(f"Tarefas atrasadas: {len(atrasadas)}\n")
+    print(f"{GREEN}✅ Concluídas ({len(concluidas)}):{RESET}")
+    if concluidas:
+        for t in concluidas:
+            print(f"  {t['titulo']} - Prazo: {t['prazo']}")
+    else:
+        print("  Nenhuma tarefa concluída.")
 
-    print("--- Tarefas concluídas ---")
-    for t in concluídas:
-        print(f"{t['id']} - {t['titulo']} (Prazo: {t['prazo']})")
+    print(f"\n{RED}❌ Pendentes ({len(pendentes)}):{RESET}")
+    if pendentes:
+        for t in pendentes:
+            status_emoji = "⏰" if datetime.strptime(t["prazo"], "%d/%m/%Y") < datetime.now() else "📝"
+            print(f"  {t['titulo']} - Prazo: {t['prazo']} {status_emoji}")
+    else:
+        print("  Nenhuma tarefa pendente.")
 
-    print("\n--- Tarefas pendentes ---")
-    for t in pendentes:
-        print(f"{t['id']} - {t['titulo']} (Prazo: {t['prazo']})")
+    print(f"\n{YELLOW}⚠️ Atrasadas ({len(atrasadas)}):{RESET}")
+    if atrasadas:
+        for t in atrasadas:
+            print(f"  {t['titulo']} - Prazo: {t['prazo']}")
+    else:
+        print("  Nenhuma tarefa atrasada.")
 
-    print("\n--- Tarefas atrasadas ---")
-    for t in atrasadas:
-        print(f"{t['id']} - {t['titulo']} (Prazo: {t['prazo']})")
+    print(f"\n{MAGENTA}============================{RESET}\n")
