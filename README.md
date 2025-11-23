@@ -84,7 +84,8 @@ Clone o repositório:
 
 git clone https://github.com/seuusuario/taskflow-equipeX.git
 cd taskflow-equipeX
-
+ instale readchar 
+ - pip install readchar
 
 Execute o sistema:
 
