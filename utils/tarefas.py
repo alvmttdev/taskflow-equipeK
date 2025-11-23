@@ -1,76 +1,72 @@
-from utils import arquivos
+import json
+import os
+from datetime import datetime
 
-CAMINHO_TAREFAS = "data/tarefas.json"
+# Caminho absoluto para data/tarefas.json
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+PROJETO_DIR = os.path.abspath(os.path.join(BASE_DIR, ".."))
+DATA_DIR = os.path.join(PROJETO_DIR, "data")
+os.makedirs(DATA_DIR, exist_ok=True)
 
+ARQUIVO_TAREFAS = os.path.join(DATA_DIR, "tarefas.json")
+
+def carregar_tarefas():
+    if not os.path.exists(ARQUIVO_TAREFAS):
+        return []
+    with open(ARQUIVO_TAREFAS, "r") as f:
+        return json.load(f)
+
+def salvar_tarefas(tarefas):
+    with open(ARQUIVO_TAREFAS, "w") as f:
+        json.dump(tarefas, f, indent=4)
 
 def criar_tarefa(titulo, descricao, responsavel, prazo):
-    """Cria uma nova tarefa e salva no JSON"""
-
-    tarefas = arquivos.ler_json(CAMINHO_TAREFAS)
-
-    if not tarefas:
-        tarefas = []
-
-    nova_tarefa = {
-        "id": len(tarefas) + 1,
+    tarefas = carregar_tarefas()
+    tarefa_id = len(tarefas) + 1
+    try:
+        datetime.strptime(prazo, "%d/%m/%Y")
+    except ValueError:
+        print("❌ Formato de prazo inválido! Use dd/mm/aaaa")
+        return
+    tarefa = {
+        "id": tarefa_id,
         "titulo": titulo,
         "descricao": descricao,
         "responsavel": responsavel,
         "prazo": prazo,
         "status": "pendente"
     }
+    tarefas.append(tarefa)
+    salvar_tarefas(tarefas)
+    print(f"✅ Tarefa '{titulo}' criada com sucesso!")
 
-    tarefas.append(nova_tarefa)
-    arquivos.salvar_json(CAMINHO_TAREFAS, tarefas)
-
-    print("\n✅ Tarefa cadastrada com sucesso!")
-
-
-def listar_tarefas():
-    """Lista todas as tarefas"""
-
-    tarefas = arquivos.ler_json(CAMINHO_TAREFAS)
-
+def listar_tarefas(usuario=None):
+    tarefas = carregar_tarefas()
+    if usuario:
+        tarefas = [t for t in tarefas if t["responsavel"] == usuario]
     if not tarefas:
-        print("\n⚠️ Nenhuma tarefa encontrada.")
+        print("Nenhuma tarefa encontrada!")
         return
-
-    print("\n📌 LISTA DE TAREFAS")
+    print("\n=== LISTA DE TAREFAS ===")
     for t in tarefas:
-        print(f"""
-ID: {t['id']}
-Título: {t['titulo']}
-Responsável: {t['responsavel']}
-Prazo: {t['prazo']}
-Status: {t['status']}
-""")
+        print(f"ID: {t['id']} | Título: {t['titulo']} | Responsável: {t['responsavel']} | Prazo: {t['prazo']} | Status: {t['status']}")
 
-
-def concluir_tarefa(id_tarefa):
-    """Marca uma tarefa como concluída"""
-
-    tarefas = arquivos.ler_json(CAMINHO_TAREFAS)
-
+def concluir_tarefa(tarefa_id, usuario):
+    tarefas = carregar_tarefas()
     for t in tarefas:
-        if t["id"] == id_tarefa:
+        if t["id"] == tarefa_id and t["responsavel"] == usuario:
             t["status"] = "concluída"
-            arquivos.salvar_json(CAMINHO_TAREFAS, tarefas)
-            print("\n🎉 Tarefa concluída com sucesso!")
+            salvar_tarefas(tarefas)
+            print(f"✅ Tarefa '{t['titulo']}' concluída!")
             return
+    print("❌ Tarefa não encontrada ou você não é responsável!")
 
-    print("\n⚠️ Tarefa não encontrada.")
-
-
-def excluir_tarefa(id_tarefa):
-    """Remove uma tarefa do sistema"""
-
-    tarefas = arquivos.ler_json(CAMINHO_TAREFAS)
-    tarefas_novas = [t for t in tarefas if t["id"] != id_tarefa]
-
-    if len(tarefas) == len(tarefas_novas):
-        print("\n⚠️ Tarefa não encontrada.")
-        return
-
-    arquivos.salvar_json(CAMINHO_TAREFAS, tarefas_novas)
-
-    print("\n🗑️ Tarefa excluída com sucesso!")
+def excluir_tarefa(tarefa_id, usuario):
+    tarefas = carregar_tarefas()
+    for t in tarefas:
+        if t["id"] == tarefa_id and t["responsavel"] == usuario:
+            tarefas.remove(t)
+            salvar_tarefas(tarefas)
+            print(f"✅ Tarefa '{t['titulo']}' excluída!")
+            return
+    print("❌ Tarefa não encontrada ou você não é responsável!")

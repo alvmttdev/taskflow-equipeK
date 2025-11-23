@@ -1,12 +1,7 @@
-[
-  {
-    "nome": "João",
-    "email": "joao@gmail.com",
-    "senha": "1234"
-  },
-  {
-    "nome": "Alvaro",
-    "email": "alvaro.mattos@ba.estudante.senai.br",
-    "senha": "admin"
-  }
-]
+{
+    "admin": {
+        "nome": "Alvaro Mattos",
+        "email": "alvaro.mattos",
+        "senha": "admin123"
+    }
+}

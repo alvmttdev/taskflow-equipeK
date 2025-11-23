@@ -1,43 +1,45 @@
-from utils import arquivos
+import json
+import os
 
-CAMINHO_ARQUIVO = "data/usuarios.json"
+# Caminho para o arquivo dentro da pasta data
+ARQUIVO_USUARIOS = os.path.join("data", "usuarios.json")
 
-def cadastrar_usuario(nome: str, email: str, senha: str) -> bool:
-    usuarios = arquivos.ler_json(CAMINHO_ARQUIVO)
+def carregar_usuarios():
+    """Carrega usuários do JSON"""
+    if not os.path.exists(ARQUIVO_USUARIOS):
+        return {}
+    with open(ARQUIVO_USUARIOS, "r") as f:
+        return json.load(f)
 
-    # Se o arquivo ainda não existir, inicia uma lista vazia
-    if usuarios is None:
-        usuarios = []
+def salvar_usuarios(usuarios):
+    """Salva usuários no JSON, criando a pasta data se não existir"""
+    pasta = os.path.dirname(ARQUIVO_USUARIOS)  # pega "data"
+    os.makedirs(pasta, exist_ok=True)          # cria pasta se não existir
+    with open(ARQUIVO_USUARIOS, "w") as f:
+        json.dump(usuarios, f, indent=4)
 
-    # Verifica se o e-mail já existe
-    for u in usuarios:
-        if u["email"] == email:
-            print("\n⚠️ E-mail já cadastrado!")
-            return False
-
-    novo_usuario = {
+def cadastrar_usuario(nome, email, login, senha):
+    usuarios = carregar_usuarios()
+    if login in usuarios:
+        print("❌ Login já existe! Escolha outro.")
+        return False
+    usuarios[login] = {
         "nome": nome,
         "email": email,
-        "senha": senha  # (versão simples, sem hash)
+        "senha": senha
     }
-
-    usuarios.append(novo_usuario)
-    arquivos.salvar_json(CAMINHO_ARQUIVO, usuarios)
-    print("\n✔️ Usuário cadastrado com sucesso!")
+    salvar_usuarios(usuarios)
+    print(f"✅ Usuário '{nome}' cadastrado com sucesso!")
     return True
 
+def login_usuario():
+    usuarios = carregar_usuarios()
+    login = input("Login: ").strip()
+    senha = input("Senha: ").strip()
 
-def autenticar(email: str, senha: str) -> bool:
-    usuarios = arquivos.ler_json(CAMINHO_ARQUIVO)
-
-    if not usuarios:
-        print("\n⚠️ Nenhum usuário cadastrado.")
-        return False
-
-    for u in usuarios:
-        if u["email"] == email and u["senha"] == senha:
-            print("\n🔓 Login realizado com sucesso!")
-            return True
-
-    print("\n❌ E-mail ou senha incorretos!")
-    return False
+    if login in usuarios and usuarios[login]["senha"] == senha:
+        print(f"\n✅ Login realizado! Bem-vindo {usuarios[login]['nome']}\n")
+        return login
+    else:
+        print("\n❌ Login ou senha incorretos!\n")
+        return None

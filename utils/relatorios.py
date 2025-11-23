@@ -1,116 +1,63 @@
-
-from utils import arquivos
+import os
+import json
 from datetime import datetime
 
-CAMINHO_TAREFAS = "data/tarefas.json"
+# Caminho absoluto para data/tarefas.json
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+PROJETO_DIR = os.path.abspath(os.path.join(BASE_DIR, ".."))
+DATA_DIR = os.path.join(PROJETO_DIR, "data")
+ARQUIVO_TAREFAS = os.path.join(DATA_DIR, "tarefas.json")
 
+# garante que a pasta data exista
+os.makedirs(DATA_DIR, exist_ok=True)
 
-def _formatar_relatorio(titulo, tarefas):
-    """Gera o texto com layout mais organizado"""
+def carregar_tarefas():
+    """Carrega tarefas do arquivo JSON"""
+    if not os.path.exists(ARQUIVO_TAREFAS):
+        return []
+    with open(ARQUIVO_TAREFAS, "r") as f:
+        return json.load(f)
 
-    agora = datetime.now().strftime("%d/%m/%Y %H:%M")
+def gerar_relatorio(usuario=None):
+    """
+    Gera relatório de tarefas.
+    Se 'usuario' for fornecido, filtra apenas tarefas do usuário.
+    """
+    tarefas = carregar_tarefas()
 
-    texto = f"""
-=====================================================
-                 {titulo}
-=====================================================
-Gerado em: {agora}
-Quantidade de tarefas: {len(tarefas)}
-=====================================================
-"""
-
-    for t in tarefas:
-        texto += f"""
------------------------------------------------------
-ID.............: {t['id']}
-Título.........: {t['titulo']}
-Responsável....: {t['responsavel']}
-Prazo..........: {t['prazo']}
-Status.........: {t['status']}
------------------------------------------------------
-"""
-    return texto
-
-
-def relatorio_concluidas():
-    tarefas = arquivos.ler_json(CAMINHO_TAREFAS)
+    if usuario:
+        tarefas = [t for t in tarefas if t["responsavel"] == usuario]
 
     if not tarefas:
-        print("\n⚠️ Nenhuma tarefa cadastrada.")
+        print("Nenhuma tarefa para gerar relatório.")
         return
 
-    concluidas = [t for t in tarefas if t["status"].lower() == "concluída"]
 
-    print("\n📌 RELATÓRIO DE TAREFAS CONCLUÍDAS")
+    # separa tarefas
+    concluídas = [t for t in tarefas if t["status"] == "concluída"]
+    pendentes = [t for t in tarefas if t["status"] == "pendente"]
+    atrasadas = []
 
-    if not concluidas:
-        print("Nenhuma tarefa concluída.")
-        return
+    hoje = datetime.today()
+    for t in pendentes:
+        prazo = datetime.strptime(t["prazo"], "%d/%m/%Y")
+        if prazo < hoje:
+            atrasadas.append(t)
 
-    texto = _formatar_relatorio("RELATÓRIO – TAREFAS CONCLUÍDAS", concluidas)
+    print("\n=== RELATÓRIO DE TAREFAS ===")
+    print(f"Total de tarefas: {len(tarefas)}")
+    print(f"Tarefas concluídas: {len(concluídas)}")
+    print(f"Tarefas pendentes: {len(pendentes)}")
+    print(f"Tarefas atrasadas: {len(atrasadas)}\n")
 
-    print(texto)   # Mostra no terminal
+    print("--- Tarefas concluídas ---")
+    for t in concluídas:
+        print(f"{t['id']} - {t['titulo']} (Prazo: {t['prazo']})")
 
-    arquivos.exportar_relatorio_txt("relatorio_concluidas.txt", texto)
-    print("\n💾 Relatório salvo em: relatorio_concluidas.txt")
+    print("\n--- Tarefas pendentes ---")
+    for t in pendentes:
+        print(f"{t['id']} - {t['titulo']} (Prazo: {t['prazo']})")
 
-
-def relatorio_pendentes():
-    tarefas = arquivos.ler_json(CAMINHO_TAREFAS)
-
-    if not tarefas:
-        print("\n⚠️ Nenhuma tarefa cadastrada.")
-        return
-
-    pendentes = [t for t in tarefas if t["status"].lower() == "pendente"]
-
-    print("\n📌 RELATÓRIO DE TAREFAS PENDENTES")
-
-    if not pendentes:
-        print("Nenhuma tarefa pendente.")
-        return
-
-    texto = _formatar_relatorio("RELATÓRIO – TAREFAS PENDENTES", pendentes)
-
-    print(texto)   # Mostra no terminal
-
-    arquivos.exportar_relatorio_txt("relatorio_pendentes.txt", texto)
-    print("\n💾 Relatório salvo em: relatorio_pendentes.txt")
-
-
-def relatorio_geral():
-    tarefas = arquivos.ler_json(CAMINHO_TAREFAS)
-
-    if not tarefas:
-        print("\n⚠️ Nenhuma tarefa cadastrada.")
-        return
-
-    print("\n📊 RELATÓRIO GERAL DE TODAS AS TAREFAS")
-
-    texto = _formatar_relatorio("RELATÓRIO GERAL DE TAREFAS", tarefas)
-
-    print(texto)   # Mostra no terminal
-
-    arquivos.exportar_relatorio_txt("relatorio_geral.txt", texto)
-    print("\n💾 Relatório salvo em: relatorio_geral.txt")
-
-
-def gerar_relatorio():
-    print("""
-📊 MENU DE RELATÓRIOS
-
-1 – Tarefas Concluídas
-2 – Tarefas Pendentes
-3 – Todas as Tarefas
-""")
-
-    opcao = input("Escolha uma opção: ")
-
-    if opcao == "1":
-        relatorio_concluidas()
-    elif opcao == "2":
-        relatorio_pendentes()
-    elif opcao == "3":
-        relatorio_geral()
-    else:
-        print("\n⚠️ Opção inválida.")
+    print("\n--- Tarefas atrasadas ---")
+    for t in atrasadas:
+        print(f"{t['id']} - {t['titulo']} (Prazo: {t['prazo']})")
